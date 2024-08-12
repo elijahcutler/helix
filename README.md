@@ -1,4 +1,4 @@
-# Helix Project
+# Helix
 
 ## Seamless Control of Your Game Servers and Instances
 This app makes it easy to manage multiple AWS EC2 instances and the `LinuxGSM` game servers running on them. With a simple interface, you can start, stop, and monitor your game servers and EC2 instances all in one place, making server management quick and hassle-free.
