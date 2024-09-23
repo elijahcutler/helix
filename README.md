@@ -44,3 +44,18 @@ Follow these steps to set up the project locally:
 
 5. **Open the app in your browser:**
   - Navigate to http://localhost:3000 to view the application.
+
+
+## Using AWS/Azure Virtual Machine Management & Discord (IN PROGRESS)
+
+Runs a Discord bot that waits for commands in a channel of your choosing.
+
+## Explanation
+### !startmc
+- checks if VM is running
+- if not, starts VM and waits for a Minecraft server to start.
+- this assumes you have a systemd service on your VM that launches the server .jar upon boot up.
+### !stopmc
+- sends a 'stop' command via RCON to the Minecraft server console (requires hostname, port, and rcon password).
+- sends a power-off request to the VM
+- note: only users with the provided 'approved-role' in Discord can initiate this command.
