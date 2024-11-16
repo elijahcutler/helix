@@ -40,6 +40,8 @@ app.post('/create-container', async (req, res) => {
       return res.status(400).json({ error: `A container with the name "${name}" already exists.` });
     }
 
+    const persistentServerDir = process.env.PERSISTENT_SERVER_DIR || '/helix/minecraft-data';
+
     const finalEnvVars = {
       EULA: 'TRUE', // Always required
       MEMORY: envVars.MEMORY || '2G', // Default memory allocation
@@ -51,7 +53,7 @@ app.post('/create-container', async (req, res) => {
       name,
       Env: Object.entries(finalEnvVars).map(([key, value]) => `${key}=${value}`),
       HostConfig: {
-        Binds: [`/path/to/data/${name}:/data`],
+        Binds: [`${persistentServerDir}/${name}:/data`],
         PortBindings: {
           '25565/tcp': [{ HostPort: `${generateUniquePort()}` }],
         },
