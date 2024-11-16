@@ -2,140 +2,90 @@
 <html lang="en">
 <head>
   <title>Minecraft Server Manager</title>
-  <link href="output.css" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-gray-900 text-white font-sans min-h-screen flex flex-col items-center p-6">
-  <div class="max-w-lg w-full">
-    <h1 class="text-3xl font-bold mb-4 text-center">Minecraft Server Manager</h1>
+<body>
+  <div class="container">
+    <h1>Minecraft Server Manager</h1>
 
     <!-- Create Container -->
-    <div class="bg-gray-800 p-6 rounded-lg shadow-md mb-6 text-center">
-      <h2 class="text-2xl font-semibold mb-4">Create New Minecraft Server</h2>
-      <form id="createContainerForm" class="space-y-4">
-        <input type="text" name="name" placeholder="Container Name" required class="w-full p-2 rounded bg-gray-700 text-white" />
-        <input type="text" name="version" placeholder="Minecraft Version (e.g., 1.20.1)" class="w-full p-2 rounded bg-gray-700 text-white" />
+    <div class="section">
+      <h2>Create New Minecraft Server</h2>
+      <form id="createContainerForm">
+        <input type="text" name="name" placeholder="Container Name" required class="input" />
         
-        <div id="envVars" class="space-y-2">
+        <!-- Memory Slider -->
+        <label for="memory">Memory Allocation:</label>
+        <input type="range" id="memorySlider" min="1" max="8" step="1" value="2" class="input" />
+        <span id="memoryValue">2G</span>
+
+        <!-- ENV Variables -->
+        <div id="envVars">
           <div>
-            <input type="text" placeholder="ENV Variable Name" class="env-name w-1/2 p-2 rounded bg-gray-700 text-white" />
-            <input type="text" placeholder="Value" class="env-value w-1/2 p-2 rounded bg-gray-700 text-white" />
+            <input type="text" placeholder="ENV Variable Name" class="input env-name" />
+            <input type="text" placeholder="Value" class="input env-value" />
           </div>
         </div>
-
-        <button type="button" onclick="addEnvVar()" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">
-          Add ENV Variable
-        </button>
-        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">Create</button>
+        <button type="button" class="button" onclick="addEnvVar()">Add ENV Variable</button>
+        <button type="submit" class="button">Create</button>
       </form>
     </div>
 
     <!-- Tracked Containers -->
-    <div class="bg-gray-800 p-6 rounded-lg shadow-md mb-6 text-center">
-      <h2 class="text-2xl font-semibold mb-4">Tracked Containers</h2>
-      <ul id="containerList" class="list-disc list-inside text-left text-gray-300"></ul>
+    <div class="section">
+      <h2>Tracked Containers</h2>
+      <ul id="containerList" class="list-item"></ul>
     </div>
   </div>
 
   <script>
+    document.getElementById('memorySlider').addEventListener('input', function () {
+      document.getElementById('memoryValue').textContent = `${this.value}G`;
+    });
+
     function addEnvVar() {
       const envVars = document.getElementById('envVars');
       const div = document.createElement('div');
       div.innerHTML = `
-        <input type="text" placeholder="ENV Variable Name" class="env-name w-1/2 p-2 rounded bg-gray-700 text-white" />
-        <input type="text" placeholder="Value" class="env-value w-1/2 p-2 rounded bg-gray-700 text-white" />
+        <input type="text" placeholder="ENV Variable Name" class="input env-name" />
+        <input type="text" placeholder="Value" class="input env-value" />
       `;
       envVars.appendChild(div);
     }
 
     document.getElementById('createContainerForm').onsubmit = async (e) => {
-  e.preventDefault();
+      e.preventDefault();
 
-  const formData = new FormData(e.target);
-  const envVars = {};
+      const name = e.target.name.value;
+      const memory = `${document.getElementById('memorySlider').value}G`;
+      const envVars = { MEMORY: memory };
 
-  formData.forEach((value, key) => {
-    if (key !== 'name' && key !== 'version') {
-      envVars[key] = value;
-    }
-  });
+      const envNames = document.querySelectorAll('.env-name');
+      const envValues = document.querySelectorAll('.env-value');
 
-  const payload = {
-    name: formData.get('name'),
-    version: formData.get('version'),
-    envVars,
-  };
-
-  console.log('Payload to send:', payload); // Debug the payload
-
-  try {
-    const response = await fetch('/create-container', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const result = await response.json();
-    if (response.ok) {
-      alert(result.message);
-    } else {
-      alert(result.error);
-    }
-  } catch (err) {
-    console.error('Error creating container:', err);
-    alert('Failed to create container.');
-  }
-};
-
-    async function fetchContainers() {
-      const response = await fetch('/list-containers');
-      const containers = await response.json();
-      const containerList = document.getElementById('containerList');
-      containerList.innerHTML = '';
-
-      containers.forEach(container => {
-        const li = document.createElement('li');
-        li.textContent = `${container.name} (Version: ${container.version}) - ${container.status}`;
-
-        const actions = ['start', 'stop', 'delete', 'logs'].map(action => {
-          const button = document.createElement('button');
-          button.textContent = action.charAt(0).toUpperCase() + action.slice(1);
-          button.className = `ml-2 bg-${action === 'start' ? 'green' : action === 'stop' ? 'red' : 'blue'}-500 hover:bg-${
-            action === 'start' ? 'green' : action === 'stop' ? 'red' : 'blue'
-          }-600 text-white py-1 px-2 rounded`;
-
-          button.onclick = () => {
-            if (action === 'logs') viewLogs(container.id);
-            else manageContainer(action, container.id);
-          };
-          return button;
-        });
-
-        actions.forEach(button => li.appendChild(button));
-        containerList.appendChild(li);
+      envNames.forEach((el, i) => {
+        const key = el.value.trim();
+        const value = envValues[i].value.trim();
+        if (key && value) {
+          envVars[key] = value;
+        }
       });
-    }
 
-    async function manageContainer(action, id) {
+      const payload = { name, envVars };
+
       try {
-        const response = await fetch(`/${action}-container`, {
+        const response = await fetch('/create-container', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id }),
+          body: JSON.stringify(payload),
         });
-        const data = await response.json();
-        alert(data.message);
-        fetchContainers();
+        const result = await response.json();
+        alert(response.ok ? result.message : result.error);
       } catch (err) {
-        console.error(`Error performing ${action}:`, err);
+        console.error('Error creating container:', err);
+        alert('Failed to create container.');
       }
-    }
-
-    async function viewLogs(id) {
-      const response = await fetch(`/container-logs/${id}`);
-      const data = await response.json();
-      alert(data.logs);
-    }
-
-    fetchContainers(); // Load containers on page load
+    };
   </script>
 </body>
 </html>
