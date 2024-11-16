@@ -27,19 +27,29 @@ app.post('/create-container', async (req, res) => {
   }
 
   try {
+    // Debug: Log the incoming data
+    console.log('Creating container with:', { name, version, envVars });
+
+    // Check for duplicate container name
+    const existingContainers = await docker.listContainers({ all: true });
+    if (existingContainers.some(container => container.Names.includes(`/${name}`))) {
+      console.log(`Container with name "${name}" already exists.`);
+      return res.status(400).json({ error: `A container with the name "${name}" already exists.` });
+    }
+
     const containerConfig = {
       Image: `itzg/minecraft-server:${version || 'latest'}`,
       name,
       Env: Object.entries(envVars || {}).map(([key, value]) => `${key}=${value}`),
       HostConfig: {
-        Binds: [
-          `/path/to/data/${name}:/data`, // Adjust the path for your setup
-        ],
+        Binds: [`/path/to/data/${name}:/data`], // Ensure this path exists
         PortBindings: {
           '25565/tcp': [{ HostPort: `${Math.floor(25565 + Math.random() * 100)}` }],
         },
       },
     };
+
+    console.log('Container configuration:', containerConfig);
 
     const container = await docker.createContainer(containerConfig);
     await container.start();
@@ -49,11 +59,11 @@ app.post('/create-container', async (req, res) => {
       `INSERT INTO containers (id, name, version, createdAt, status) VALUES (?, ?, ?, ?, ?)`
     ).run(container.id, name, version || 'latest', createdAt, 'running');
 
-    console.log(`Created container: ${name}`);
-    res.json({ message: `Container ${name} created successfully.` });
+    console.log(`Container "${name}" created successfully.`);
+    res.json({ message: `Container "${name}" created successfully.` });
   } catch (err) {
-    console.error('Error creating container:', err);
-    res.status(500).json({ error: 'Failed to create container.' });
+    console.error('Error during container creation:', err);
+    res.status(500).json({ error: 'Failed to create container. Check server logs for details.' });
   }
 });
 

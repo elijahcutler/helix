@@ -48,37 +48,42 @@
     }
 
     document.getElementById('createContainerForm').onsubmit = async (e) => {
-      e.preventDefault();
+  e.preventDefault();
 
-      const name = e.target.name.value;
-      const version = e.target.version.value;
+  const formData = new FormData(e.target);
+  const envVars = {};
 
-      const envNames = document.querySelectorAll('.env-name');
-      const envValues = document.querySelectorAll('.env-value');
-      const envVars = {};
+  formData.forEach((value, key) => {
+    if (key !== 'name' && key !== 'version') {
+      envVars[key] = value;
+    }
+  });
 
-      envNames.forEach((el, index) => {
-        const key = el.value.trim();
-        const value = envValues[index].value.trim();
-        if (key && value) {
-          envVars[key] = value;
-        }
-      });
+  const payload = {
+    name: formData.get('name'),
+    version: formData.get('version'),
+    envVars,
+  };
 
-      try {
-        const response = await fetch('/create-container', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, version, envVars }),
-        });
-        const data = await response.json();
-        alert(data.message);
-        fetchContainers(); // Refresh container list
-      } catch (err) {
-        console.error('Error creating container:', err);
-        alert('Failed to create container.');
-      }
-    };
+  console.log('Payload to send:', payload); // Debug the payload
+
+  try {
+    const response = await fetch('/create-container', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+    if (response.ok) {
+      alert(result.message);
+    } else {
+      alert(result.error);
+    }
+  } catch (err) {
+    console.error('Error creating container:', err);
+    alert('Failed to create container.');
+  }
+};
 
     async function fetchContainers() {
       const response = await fetch('/list-containers');
