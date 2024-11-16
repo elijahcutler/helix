@@ -1,0 +1,32 @@
+version: '3'
+services:
+  minecraft:
+    image: itzg/minecraft-server
+    container_name: minecraft_server
+    ports:
+      - "25565:25565"
+    volumes:
+      - mc_data:/data  # This volume stores world data for Minecraft
+    environment:
+      EULA: "TRUE"
+
+  webapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mc_server_manager
+    ports:
+      - "3000:3000"
+    depends_on:
+      - minecraft
+    environment:
+      - DOCKER_HOST=http://localhost
+      - DOCKER_PORT=2375
+      - SERVER_PORT=3000
+      - MC_CONTAINER_NAME=minecraft_server
+      - WORLD_DIR=/data/world  # Point to the shared volume
+    volumes:
+      - mc_data:/data  # Share the Minecraft volume for accessing world info
+
+volumes:
+  mc_data:

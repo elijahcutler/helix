@@ -1,0 +1,28 @@
+{
+  "name": "mc-server-manager",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "build:tailwind": "npx tailwindcss -i ./public/styles.css -o ./public/output.css --watch",
+    "dev": "concurrently \"npm run start\" \"npm run build:tailwind\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dockerode": "^4.0.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "extract-zip": "^2.0.1",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.14"
+  }
+}

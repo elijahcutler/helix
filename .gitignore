@@ -1,0 +1,8 @@
+#.gitignore
+
+.env
+node_modules
+output.css
+.next
+next-env.d.ts
+uploads/.
