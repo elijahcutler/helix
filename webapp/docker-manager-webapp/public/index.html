@@ -8,95 +8,129 @@
   <div class="max-w-lg w-full">
     <h1 class="text-3xl font-bold mb-4 text-center">Minecraft Server Manager</h1>
 
-    <!-- Server Status Section -->
+    <!-- Create Container -->
     <div class="bg-gray-800 p-6 rounded-lg shadow-md mb-6 text-center">
-      <h2 class="text-2xl font-semibold mb-4">Server Status</h2>
-      <div id="status" class="text-2xl mb-6">Loading...</div>
+      <h2 class="text-2xl font-semibold mb-4">Create New Minecraft Server</h2>
+      <form id="createContainerForm" class="space-y-4">
+        <input type="text" name="name" placeholder="Container Name" required class="w-full p-2 rounded bg-gray-700 text-white" />
+        <input type="text" name="version" placeholder="Minecraft Version (e.g., 1.20.1)" class="w-full p-2 rounded bg-gray-700 text-white" />
+        
+        <div id="envVars" class="space-y-2">
+          <div>
+            <input type="text" placeholder="ENV Variable Name" class="env-name w-1/2 p-2 rounded bg-gray-700 text-white" />
+            <input type="text" placeholder="Value" class="env-value w-1/2 p-2 rounded bg-gray-700 text-white" />
+          </div>
+        </div>
 
-      <div class="flex justify-center space-x-4">
-        <button onclick="manageServer('start')" class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">Start</button>
-        <button onclick="manageServer('stop')" class="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded">Stop</button>
-        <button onclick="manageServer('restart')" class="bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded">Restart</button>
-      </div>
-    </div>
-
-    <!-- World Info Section -->
-    <div class="bg-gray-800 p-6 rounded-lg shadow-md mb-6 text-center">
-      <h2 class="text-2xl font-semibold mb-4">World Information</h2>
-      <div id="world-info" class="text-lg">Loading...</div>
-    </div>
-
-    <!-- Upload World Section -->
-    <div class="bg-gray-800 p-6 rounded-lg shadow-md text-center">
-      <h2 class="text-2xl font-semibold mb-4">Upload World</h2>
-      <form id="uploadForm" enctype="multipart/form-data" class="space-y-4">
-        <input type="file" name="world" accept=".zip" class="text-gray-300">
-        <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">Upload</button>
+        <button type="button" onclick="addEnvVar()" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">
+          Add ENV Variable
+        </button>
+        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">Create</button>
       </form>
+    </div>
+
+    <!-- Tracked Containers -->
+    <div class="bg-gray-800 p-6 rounded-lg shadow-md mb-6 text-center">
+      <h2 class="text-2xl font-semibold mb-4">Tracked Containers</h2>
+      <ul id="containerList" class="list-disc list-inside text-left text-gray-300"></ul>
     </div>
   </div>
 
   <script>
-    async function fetchStatus() {
-      try {
-        const response = await fetch('/status');
-        const data = await response.json();
-        document.getElementById('status').innerHTML = data.status === 'running' ? `<span class="text-green-400 font-bold">🟢 Running</span><br><span class="text-sm text-gray-400">${data.uptime}</span>` : `<span class="text-red-400 font-bold">🔴 Stopped</span>`;
-      } catch (error) {
-        document.getElementById('status').innerText = 'Error fetching status';
-        console.error('Error fetching status:', error);
-      }
+    function addEnvVar() {
+      const envVars = document.getElementById('envVars');
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <input type="text" placeholder="ENV Variable Name" class="env-name w-1/2 p-2 rounded bg-gray-700 text-white" />
+        <input type="text" placeholder="Value" class="env-value w-1/2 p-2 rounded bg-gray-700 text-white" />
+      `;
+      envVars.appendChild(div);
     }
 
-    async function fetchWorldInfo() {
-      try {
-        const response = await fetch('/world-info');
-        const data = await response.json();
-        document.getElementById('world-info').innerHTML = `
-          <p><strong>World Size:</strong> ${data.size}</p>
-          <p><strong>Last Modified:</strong> ${new Date(data.lastModified).toLocaleString()}</p>
-          <p><strong>Player Count:</strong> ${data.playerCount}</p>
-        `;
-      } catch (error) {
-        document.getElementById('world-info').innerText = 'Error fetching world info';
-        console.error('Error fetching world info:', error);
-      }
-    }
-
-    async function manageServer(action) {
-      try {
-        const response = await fetch(`/${action}`, { method: 'POST' });
-        const data = await response.json();
-        alert(`Server ${data.status}`);
-        fetchStatus();
-      } catch (error) {
-        alert(`Error performing ${action}`);
-        console.error(`Error performing ${action}:`, error);
-      }
-    }
-
-    document.getElementById('uploadForm').onsubmit = async (e) => {
+    document.getElementById('createContainerForm').onsubmit = async (e) => {
       e.preventDefault();
-      const formData = new FormData(e.target);
-      try {
-        const response = await fetch('/upload', { method: 'POST', body: formData });
-        const result = await response.json();
-        if (response.ok) {
-          alert(result.message);
-          fetchStatus();
-        } else {
-          alert(`Upload failed: ${result.error}`);
+
+      const name = e.target.name.value;
+      const version = e.target.version.value;
+
+      const envNames = document.querySelectorAll('.env-name');
+      const envValues = document.querySelectorAll('.env-value');
+      const envVars = {};
+
+      envNames.forEach((el, index) => {
+        const key = el.value.trim();
+        const value = envValues[index].value.trim();
+        if (key && value) {
+          envVars[key] = value;
         }
-      } catch (error) {
-        alert('Error uploading world');
-        console.error('Error uploading world:', error);
+      });
+
+      try {
+        const response = await fetch('/create-container', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, version, envVars }),
+        });
+        const data = await response.json();
+        alert(data.message);
+        fetchContainers(); // Refresh container list
+      } catch (err) {
+        console.error('Error creating container:', err);
+        alert('Failed to create container.');
       }
     };
 
-    fetchStatus();
-    fetchWorldInfo();
-    setInterval(fetchStatus, 10000);
-    setInterval(fetchWorldInfo, 30000);
+    async function fetchContainers() {
+      const response = await fetch('/list-containers');
+      const containers = await response.json();
+      const containerList = document.getElementById('containerList');
+      containerList.innerHTML = '';
+
+      containers.forEach(container => {
+        const li = document.createElement('li');
+        li.textContent = `${container.name} (Version: ${container.version}) - ${container.status}`;
+
+        const actions = ['start', 'stop', 'delete', 'logs'].map(action => {
+          const button = document.createElement('button');
+          button.textContent = action.charAt(0).toUpperCase() + action.slice(1);
+          button.className = `ml-2 bg-${action === 'start' ? 'green' : action === 'stop' ? 'red' : 'blue'}-500 hover:bg-${
+            action === 'start' ? 'green' : action === 'stop' ? 'red' : 'blue'
+          }-600 text-white py-1 px-2 rounded`;
+
+          button.onclick = () => {
+            if (action === 'logs') viewLogs(container.id);
+            else manageContainer(action, container.id);
+          };
+          return button;
+        });
+
+        actions.forEach(button => li.appendChild(button));
+        containerList.appendChild(li);
+      });
+    }
+
+    async function manageContainer(action, id) {
+      try {
+        const response = await fetch(`/${action}-container`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+        const data = await response.json();
+        alert(data.message);
+        fetchContainers();
+      } catch (err) {
+        console.error(`Error performing ${action}:`, err);
+      }
+    }
+
+    async function viewLogs(id) {
+      const response = await fetch(`/container-logs/${id}`);
+      const data = await response.json();
+      alert(data.logs);
+    }
+
+    fetchContainers(); // Load containers on page load
   </script>
 </body>
 </html>
