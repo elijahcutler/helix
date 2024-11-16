@@ -1,16 +1,21 @@
 {
   "name": "mc-server-manager",
   "version": "1.0.0",
-  "description": "",
+  "description": "A web-based Minecraft server manager built with Docker and Express.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
+    "start:prod": "NODE_ENV=production node index.js",
+    "build": "npx tailwindcss -i ./public/styles.css -o ./public/output.css",
     "build:tailwind": "npx tailwindcss -i ./public/styles.css -o ./public/output.css --watch",
-    "dev": "concurrently \"npm run start\" \"npm run build:tailwind\""
+    "build:prod": "NODE_ENV=production npx tailwindcss -i ./public/styles.css -o ./public/output.css --minify",
+    "prepare": "npm run build",
+    "dev": "concurrently --kill-others-on-fail \"npm run dev:server\" \"npm run build:tailwind\"",
+    "dev:server": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["minecraft", "server-manager", "docker", "express"],
+  "author": "Elijah Cutler <elijahcutler@gmail.com>",
   "license": "ISC",
   "dependencies": {
     "dockerode": "^4.0.2",
@@ -22,6 +27,7 @@
   "devDependencies": {
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.1.0",
+    "nodemon": "^3.0.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.14"
   }
