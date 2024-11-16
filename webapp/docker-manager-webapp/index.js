@@ -1,18 +1,26 @@
 require('dotenv').config();
 const express = require('express');
 const Docker = require('dockerode');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const db = require('./db');
 
 const docker = new Docker({ host: process.env.DOCKER_HOST, port: process.env.DOCKER_PORT });
 const app = express();
-const upload = multer({ dest: 'uploads/' });
 
 // Middleware
 app.use(express.static('public'));
 app.use(express.json());
+
+// In-memory container tracker
+const containers = [];
+
+// Generate unique port to avoid conflicts
+function generateUniquePort() {
+  let port;
+  const usedPorts = containers.map(c => parseInt(c.hostPort));
+  do {
+    port = Math.floor(25565 + Math.random() * 100);
+  } while (usedPorts.includes(port));
+  return port;
+}
 
 // Validate memory format (e.g., 2G, 1024M)
 const validateMemory = (value) => /^[1-8]G$/.test(value);
@@ -21,39 +29,31 @@ const validateMemory = (value) => /^[1-8]G$/.test(value);
 app.post('/create-container', async (req, res) => {
   const { name, envVars } = req.body;
 
-  if (!name) {
-    return res.status(400).json({ error: 'Container name is required.' });
-  }
-
-  if (envVars.MEMORY && !validateMemory(envVars.MEMORY)) {
-    return res.status(400).json({ error: 'Invalid MEMORY format. Use values like "1G", "2G", up to "8G".' });
+  if (!name || !envVars.VERSION || !envVars.TYPE) {
+    return res.status(400).json({ error: 'Container name, Minecraft version, and server type are required.' });
   }
 
   try {
     console.log('Creating container with:', { name, envVars });
 
-    // Check for duplicate container name
-    const existingContainers = await docker.listContainers({ all: true });
-    if (existingContainers.some(container => container.Names.includes(`/${name}`))) {
-      console.log(`Container with name "${name}" already exists.`);
+    if (containers.some(container => container.name === name)) {
       return res.status(400).json({ error: `A container with the name "${name}" already exists.` });
     }
 
-    // Add default environment variables
     const finalEnvVars = {
-      EULA: 'TRUE',
-      MEMORY: '2G', // Default memory allocation
-      ...envVars, // User-provided environment variables
+      EULA: 'TRUE', // Always required
+      MEMORY: envVars.MEMORY || '2G', // Default memory allocation
+      ...envVars, // User-provided variables
     };
 
     const containerConfig = {
-      Image: `itzg/minecraft-server:latest`, // Use latest image
+      Image: `itzg/minecraft-server:latest`,
       name,
       Env: Object.entries(finalEnvVars).map(([key, value]) => `${key}=${value}`),
       HostConfig: {
         Binds: [`/path/to/data/${name}:/data`],
         PortBindings: {
-          '25565/tcp': [{ HostPort: `${Math.floor(25565 + Math.random() * 100)}` }],
+          '25565/tcp': [{ HostPort: `${generateUniquePort()}` }],
         },
       },
     };
@@ -63,12 +63,13 @@ app.post('/create-container', async (req, res) => {
     const container = await docker.createContainer(containerConfig);
     await container.start();
 
-    const createdAt = new Date().toISOString();
-    db.prepare(
-      `INSERT INTO containers (id, name, createdAt, status) VALUES (?, ?, ?, ?)`
-    ).run(container.id, name, createdAt, 'running');
+    containers.push({
+      id: container.id,
+      name,
+      createdAt: new Date().toISOString(),
+      status: 'running',
+    });
 
-    console.log(`Container "${name}" created successfully.`);
     res.json({ message: `Container "${name}" created successfully.` });
   } catch (err) {
     console.error('Error during container creation:', err);
@@ -78,17 +79,29 @@ app.post('/create-container', async (req, res) => {
 
 // List all tracked containers
 app.get('/list-containers', (req, res) => {
+  res.json(containers);
+});
+
+// Server metrics
+app.get('/server-metrics/:id', async (req, res) => {
+  const { id } = req.params;
+
   try {
-    const containers = db.prepare('SELECT * FROM containers').all();
-    res.json(containers);
+    const container = docker.getContainer(id);
+    const stats = await container.stats({ stream: false });
+
+    const metrics = {
+      memoryUsage: `${(stats.memory_stats.usage / 1024 / 1024).toFixed(2)} MB`,
+      cpuUsage: `${stats.cpu_stats.cpu_usage.total_usage} CPU units`,
+    };
+
+    res.json(metrics);
   } catch (err) {
-    console.error('Error fetching containers:', err);
-    res.status(500).json({ error: 'Failed to retrieve containers.' });
+    console.error('Error fetching server metrics:', err);
+    res.status(500).json({ error: 'Failed to fetch server metrics.' });
   }
 });
 
-// Other container management routes remain unchanged
-// ...
 // Start server
 const port = process.env.SERVER_PORT || 3000;
 app.listen(port, () => console.log(`Server running on http://localhost:${port}`));

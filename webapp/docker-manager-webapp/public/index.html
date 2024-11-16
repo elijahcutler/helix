@@ -8,25 +8,47 @@
   <div class="container">
     <h1>Minecraft Server Manager</h1>
 
+    <!-- Error Message -->
+    <div id="errorMessage" class="error-message"></div>
+
     <!-- Create Container -->
     <div class="section">
       <h2>Create New Minecraft Server</h2>
       <form id="createContainerForm">
-        <input type="text" name="name" placeholder="Container Name" required class="input" />
+        <input type="text" name="name" placeholder="Container Name (Required)" required class="input" />
+        <input type="text" name="version" placeholder="Minecraft Version (e.g., 1.20.1)" required class="input" />
         
+        <label for="type">Server Type:</label>
+        <select name="type" id="type" required class="input">
+          <option value="FABRIC">Fabric</option>
+          <option value="FORGE">Forge</option>
+          <option value="PAPER">Paper</option>
+          <option value="SPIGOT">Spigot</option>
+          <option value="VANILLA">Vanilla</option>
+        </select>
+
+        <label for="difficulty">Difficulty:</label>
+        <select name="difficulty" id="difficulty" class="input">
+          <option value="peaceful">Peaceful</option>
+          <option value="easy" selected>Easy</option>
+          <option value="normal">Normal</option>
+          <option value="hard">Hard</option>
+        </select>
+
+        <label for="motd">MOTD:</label>
+        <input type="text" name="motd" id="motd" placeholder="Message of the Day" class="input" />
+
+        <label for="mode">Game Mode:</label>
+        <select name="mode" id="mode" class="input">
+          <option value="creative">Creative</option>
+          <option value="survival" selected>Survival</option>
+        </select>
+
         <!-- Memory Slider -->
         <label for="memory">Memory Allocation:</label>
         <input type="range" id="memorySlider" min="1" max="8" step="1" value="2" class="input" />
         <span id="memoryValue">2G</span>
 
-        <!-- ENV Variables -->
-        <div id="envVars">
-          <div>
-            <input type="text" placeholder="ENV Variable Name" class="input env-name" />
-            <input type="text" placeholder="Value" class="input env-value" />
-          </div>
-        </div>
-        <button type="button" class="button" onclick="addEnvVar()">Add ENV Variable</button>
         <button type="submit" class="button">Create</button>
       </form>
     </div>
@@ -43,35 +65,41 @@
       document.getElementById('memoryValue').textContent = `${this.value}G`;
     });
 
-    function addEnvVar() {
-      const envVars = document.getElementById('envVars');
-      const div = document.createElement('div');
-      div.innerHTML = `
-        <input type="text" placeholder="ENV Variable Name" class="input env-name" />
-        <input type="text" placeholder="Value" class="input env-value" />
-      `;
-      envVars.appendChild(div);
+    async function fetchContainerList() {
+      try {
+        const response = await fetch('/list-containers');
+        const containers = await response.json();
+        const containerList = document.getElementById('containerList');
+        containerList.innerHTML = '';
+
+        containers.forEach(container => {
+          const li = document.createElement('li');
+          li.textContent = `${container.name} - ${container.status}`;
+          containerList.appendChild(li);
+        });
+      } catch (err) {
+        console.error('Error fetching containers:', err);
+      }
     }
 
     document.getElementById('createContainerForm').onsubmit = async (e) => {
       e.preventDefault();
+      const errorMessage = document.getElementById('errorMessage');
+      errorMessage.textContent = '';
 
-      const name = e.target.name.value;
-      const memory = `${document.getElementById('memorySlider').value}G`;
-      const envVars = { MEMORY: memory };
+      const formData = new FormData(e.target);
 
-      const envNames = document.querySelectorAll('.env-name');
-      const envValues = document.querySelectorAll('.env-value');
-
-      envNames.forEach((el, i) => {
-        const key = el.value.trim();
-        const value = envValues[i].value.trim();
-        if (key && value) {
-          envVars[key] = value;
-        }
-      });
-
-      const payload = { name, envVars };
+      const payload = {
+        name: formData.get('name'),
+        envVars: {
+          VERSION: formData.get('version'),
+          TYPE: formData.get('type'),
+          DIFFICULTY: formData.get('difficulty'),
+          MOTD: formData.get('motd'),
+          MODE: formData.get('mode'),
+          MEMORY: `${document.getElementById('memorySlider').value}G`,
+        },
+      };
 
       try {
         const response = await fetch('/create-container', {
@@ -80,12 +108,16 @@
           body: JSON.stringify(payload),
         });
         const result = await response.json();
-        alert(response.ok ? result.message : result.error);
+        if (!response.ok) throw new Error(result.error);
+        alert(result.message);
+        fetchContainerList();
       } catch (err) {
-        console.error('Error creating container:', err);
-        alert('Failed to create container.');
+        errorMessage.textContent = err.message;
       }
     };
+
+    setInterval(fetchContainerList, 10000); // Auto-refresh container list every 10 seconds
+    fetchContainerList();
   </script>
 </body>
 </html>
