@@ -69,54 +69,55 @@ app.post('/restart', async (req, res) => {
 });
 
 // World info with enhanced error handling and logging
-app.get('/world-info', async (req, res) => {
+app.get('/world-info', (req, res) => {
   const worldPath = path.join(process.env.WORLD_DIR);
   const playerDataPath = path.join(worldPath, 'playerdata');
 
-  console.log('Checking access for World Path:', worldPath);
-  console.log('Checking access for Player Data Path:', playerDataPath);
+  console.log('World Path:', worldPath);
+  console.log('Player Data Path:', playerDataPath);
 
-  try {
-    // Check if world directory is readable
-    await fs.promises.access(worldPath, fs.constants.R_OK);
-  } catch (err) {
-    console.error('Permission issue or non-existent path:', err);
-    return res.status(500).json({ error: 'World directory cannot be accessed. Check path and permissions.' });
-  }
-
-  // If accessible, continue with the rest of the processing as before
-  fs.readdir(worldPath, (err, files) => {
+  fs.access(worldPath, fs.constants.R_OK, (err) => {
     if (err) {
-      console.error('Error reading world directory:', err);
-      return res.status(500).json({ error: 'Unable to read world directory contents.' });
+      console.error('World directory cannot be read:', err);
+      return res.status(500).json({ error: 'World directory cannot be accessed. Check path and permissions.' });
     }
 
-    let totalSize = 0;
-    let lastModified = new Date(0);
-
-    files.forEach(file => {
-      const filePath = path.join(worldPath, file);
-      try {
-        const stats = fs.statSync(filePath);
-        totalSize += stats.size;
-        if (stats.mtime > lastModified) lastModified = stats.mtime;
-      } catch (fileError) {
-        console.error(`Error accessing file ${filePath}:`, fileError);
-      }
-    });
-
-    fs.readdir(playerDataPath, (err, playerFiles) => {
+    fs.readdir(worldPath, (err, files) => {
       if (err) {
-        console.error('Error reading player data directory:', err);
-        return res.status(500).json({ error: 'Unable to retrieve player information. Check player data path and permissions.' });
+        console.error('Error reading world directory:', err);
+        return res.status(500).json({ error: 'Unable to read world directory contents.' });
       }
 
-      const playerCount = playerFiles.length;
+      let totalSize = 0;
+      let lastModified = new Date(0);
 
-      res.json({
-        size: (totalSize / (1024 * 1024)).toFixed(2) + ' MB',
-        lastModified: lastModified,
-        playerCount: playerCount,
+      files.forEach(file => {
+        const filePath = path.join(worldPath, file);
+        try {
+          const stats = fs.statSync(filePath);
+          totalSize += stats.size;
+          if (stats.mtime > lastModified) lastModified = stats.mtime;
+        } catch (fileError) {
+          console.error(`Error accessing file ${filePath}:`, fileError);
+        }
+      });
+
+      fs.readdir(playerDataPath, (err, playerFiles) => {
+        if (err) {
+          console.error('Error reading player data directory:', err);
+          return res.status(500).json({ error: 'Unable to retrieve player information. Check player data path and permissions.' });
+        }
+
+        // Filter out .dat_old files
+        const filteredPlayerFiles = playerFiles.filter(file => file.endsWith('.dat') && !file.endsWith('.dat_old'));
+
+        const playerCount = filteredPlayerFiles.length;
+
+        res.json({
+          size: (totalSize / (1024 * 1024)).toFixed(2) + ' MB',
+          lastModified: lastModified,
+          playerCount: playerCount,
+        });
       });
     });
   });
