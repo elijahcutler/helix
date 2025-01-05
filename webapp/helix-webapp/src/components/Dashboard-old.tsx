@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { Header } from "./Header"
 
 interface ContainerConfig {
   name: string;
@@ -19,7 +20,7 @@ interface Container {
   Ports: { PublicPort: number }[];
 }
 
-export default function DockerContainerManager() {
+export default function Dashboard() {
   const [containers, setContainers] = useState<Container[]>([]);
   const [newContainerConfig, setNewContainerConfig] = useState<ContainerConfig>({ name: '', image: 'itzg/minecraft-server' });
   const [serverVersion, setServerVersion] = useState('');
@@ -196,6 +197,7 @@ export default function DockerContainerManager() {
 
   return (
     <div>
+      <Header/>
       <h1 className="text-2xl font-bold mb-4">Docker Container Manager</h1>
       {loading && <p>Loading...</p>}
       {error && <p className="text-red-500">{error}</p>}

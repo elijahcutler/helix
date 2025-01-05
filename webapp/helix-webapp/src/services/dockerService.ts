@@ -126,3 +126,28 @@ export const getContainerStatus = async (containerId: string): Promise<Docker.Co
     throw error;
   }
 };
+
+export async function getContainerLogs(containerId: string, tail: number = 100): Promise<string[]> {
+  try {
+    const container = docker.getContainer(containerId);
+    const logs = await container.logs({
+      stdout: true,
+      stderr: true,
+      tail,
+      timestamps: true,
+    });
+
+    // Ensure logs are split into lines
+    return logs.toString('utf-8').split('\n').filter((line) => line.trim() !== '');
+  } catch (error) {
+    console.error(`Error fetching logs for container ${containerId}:`, error);
+    throw new Error('Failed to fetch container logs');
+  }
+}
+
+/**
+ * Cleans and formats individual log entries.
+ */
+function cleanLogEntry(log: string): string {
+  return log.replace(/^[\u0000-\u001f\u007f-\u009f]+/, ''); // Remove control characters
+}

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Helix",
-  description: "Minecraft Server Manager",
+  description: "Game Server Manager",
 };
 
 export default function RootLayout({
