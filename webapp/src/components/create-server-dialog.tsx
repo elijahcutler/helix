@@ -50,6 +50,7 @@ export function CreateServerDialog({ isOpen, setIsOpen, onCreateServer }: Create
                 onChange={(e) => setName(e.target.value)} 
                 className="col-span-3" 
                 required
+                autoComplete='off'
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -63,6 +64,7 @@ export function CreateServerDialog({ isOpen, setIsOpen, onCreateServer }: Create
                 className="col-span-3" 
                 type="number" 
                 required
+                autoComplete='off'
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -75,6 +77,7 @@ export function CreateServerDialog({ isOpen, setIsOpen, onCreateServer }: Create
                 onChange={(e) => setVersion(e.target.value)} 
                 className="col-span-3" 
                 required
+                autoComplete='off'
               />
             </div>
           </div>

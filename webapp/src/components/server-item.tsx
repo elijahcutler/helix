@@ -21,9 +21,9 @@ export function ServerItem({ server, refreshServers }: ServerItemProps) {
   const [isLogsExpanded, setIsLogsExpanded] = useState(false);
 
   const statusColor = {
-    running: "bg-green-500",
-    stopped: "bg-yellow-500",
-    error: "bg-red-500",
+    running: "bg-green-500 dark:bg-green-700",
+    stopped: "bg-yellow-500 dark:bg-yellow-700",
+    error: "bg-red-500 dark:bg-red-700"
   };
 
   // Fetch logs when accordion is expanded
@@ -55,7 +55,7 @@ export function ServerItem({ server, refreshServers }: ServerItemProps) {
   };
 
   return (
-    <Card>
+    <Card className="bg-card text-card-foreground">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-2xl font-bold">{server.name}</CardTitle>
         <ServerControls server={server} refreshServers={refreshServers} />

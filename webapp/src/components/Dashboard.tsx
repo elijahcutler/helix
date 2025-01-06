@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle } from 'lucide-react';
 import { ServerList } from "./server-list";
 import { CreateServerDialog } from "./create-server-dialog";
-import { Header } from "./Header";
 
 export interface Server {
   id: string;
@@ -97,8 +96,7 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Minecraft Servers</h1>

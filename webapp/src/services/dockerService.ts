@@ -1,6 +1,10 @@
 import Docker from 'dockerode';
 import dotenv from 'dotenv';
 
+import fs from 'fs-extra';
+import path from 'path';
+import { exec } from 'child_process';
+
 dotenv.config();
 
 const docker = new Docker({
@@ -69,10 +73,28 @@ export const createContainer = async (config: ContainerConfig): Promise<Docker.C
 export const removeContainer = async (containerId: string): Promise<void> => {
   try {
     const container = docker.getContainer(containerId);
-    await container.remove();
+
+    // Inspect the container to get the bind mount information
+    const containerInfo = await container.inspect();
+    const bindMounts = containerInfo.HostConfig.Binds;
+
+    // Remove the container and associated volumes
+    await container.remove({ force: true });
+    console.log(`Container ${containerId} removed successfully.`);
+
+    // Clean up bind-mounted directories
+    if (bindMounts) {
+      for (const bind of bindMounts) {
+        const [hostPath] = bind.split(':');
+        if (hostPath.startsWith('/helix/minecraft-data')) {
+          await fs.remove(hostPath); // Deletes the bind-mounted directory
+          console.log(`Deleted bind-mounted directory: ${hostPath}`);
+        }
+      }
+    }
   } catch (error) {
-    console.error('Error removing container:', error);
-    throw error;
+    console.error(`Error removing container ${containerId}:`, error);
+    throw new Error('Failed to remove container and associated bind-mounted data');
   }
 };
 
@@ -125,6 +147,48 @@ export const getContainerStatus = async (containerId: string): Promise<Docker.Co
     console.error('Error getting container status:', error);
     throw error;
   }
+};
+
+export const backupContainer = async (containerId: string, serverName: string): Promise<string> => {
+  try {
+    const container = docker.getContainer(containerId);
+    const serverDataPath = `/helix/minecraft-data/${serverName}`;
+    const backupDir = `/helix/minecraft-backups/${serverName}`;
+    const timestamp = new Date().toISOString().replace(/[:.-]/g, '_'); // Format timestamp for filenames
+    const backupFile = path.join(backupDir, `backup_${timestamp}.zip`);
+
+    // Ensure backup directory exists
+    await fs.ensureDir(backupDir);
+
+    console.log(`Stopping container: ${containerId}`);
+    await container.stop();
+
+    console.log(`Creating backup: ${backupFile}`);
+    await compressDirectory(serverDataPath, backupFile);
+
+    console.log(`Starting container: ${containerId}`);
+    await container.start();
+
+    console.log(`Backup completed: ${backupFile}`);
+    return backupFile; // Return the backup file path
+  } catch (error) {
+    console.error('Error during backup:', error);
+    throw new Error('Failed to create backup');
+  }
+};
+
+const compressDirectory = (sourceDir: string, outputFile: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const command = `zip -r ${outputFile} ${sourceDir}`;
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error('Error compressing directory:', stderr);
+        return reject(error);
+      }
+      console.log('Compression output:', stdout);
+      resolve();
+    });
+  });
 };
 
 export async function getContainerLogs(containerId: string, tail: number = 100): Promise<string[]> {
